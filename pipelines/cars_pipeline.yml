@@ -1,0 +1,35 @@
+trigger:
+- main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+steps:
+- task: UsePythonVersion@0
+  inputs:
+    versionSpec: '3.8'
+  displayName: 'Use Python 3.8'
+
+- script: |
+    pip install -r environment/requirements_cars.txt
+  displayName: 'Install dependencies'
+
+- script: |
+    python models/linear_regression/train.py data/cars.csv cars
+    python models/random_forest/train.py data/cars.csv cars
+    python models/decision_tree/train.py data/cars.csv cars
+  displayName: 'Train all models'
+
+- script: |
+    python ci_cd_utils/evaluate_metrics.py cars LinearRegression
+    python ci_cd_utils/evaluate_metrics.py cars RandomForest
+    python ci_cd_utils/evaluate_metrics.py cars DecisionTree
+  displayName: 'Evaluate model metrics'
+
+- script: |
+    python ci_cd_utils/compare_models.py cars
+  displayName: 'Compare models and select best'
+
+- script: |
+    python ci_cd_utils/deploy_model.py cars
+  displayName: 'Deploy best model'
