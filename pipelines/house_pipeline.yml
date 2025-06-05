@@ -1,0 +1,42 @@
+trigger:
+- main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+steps:
+- task: UsePythonVersion@0
+  inputs:
+    versionSpec: '3.8'
+  displayName: 'Use Python 3.8'
+
+- script: |
+    pip install -r environment/requirements_house.txt
+  displayName: 'Install dependencies'
+
+- script: |
+    python models/linear_regression/train.py data/house.csv
+    python models/random_forest/train.py data/house.csv
+    python models/decision_tree/train.py data/house.csv
+  displayName: 'Train all models'
+
+- script: |
+    python cd/evaluate_metrics.py house LinearRegression
+    python cd/evaluate_metrics.py house RandomForest
+    python cd/evaluate_metrics.py house DecisionTree
+  displayName: 'Evaluate model metrics'
+
+- script: |
+    python ci/compare_models.py house
+  displayName: 'Compare models and select best'
+
+- script: |
+    python cd/deploy_model.py house
+  displayName: 'Deploy best model'
+
+- task: PublishBuildArtifacts@1
+  inputs:
+    PathtoPublish: 'reports'
+    ArtifactName: 'metrics_reports'
+    publishLocation: 'Container'
+  displayName: 'Publish metrics reports as artifact'

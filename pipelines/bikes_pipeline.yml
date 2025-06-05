@@ -1,0 +1,42 @@
+trigger:
+- main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+steps:
+- task: UsePythonVersion@0
+  inputs:
+    versionSpec: '3.8'
+  displayName: 'Use Python 3.8'
+
+- script: |
+    pip install -r environment/requirements_bikes.txt
+  displayName: 'Install dependencies'
+
+- script: |
+    python models/linear_regression/train.py data/bikes.csv
+    python models/random_forest/train.py data/bikes.csv
+    python models/decision_tree/train.py data/bikes.csv
+  displayName: 'Train all models'
+
+- script: |
+    python cd/evaluate_metrics.py bikes LinearRegression
+    python cd/evaluate_metrics.py bikes RandomForest
+    python cd/evaluate_metrics.py bikes DecisionTree
+  displayName: 'Evaluate model metrics'
+
+- script: |
+    python ci/compare_models.py bikes
+  displayName: 'Compare models and select best'
+
+- script: |
+    python cd/deploy_model.py bikes
+  displayName: 'Deploy best model'
+
+- task: PublishBuildArtifacts@1
+  inputs:
+    PathtoPublish: 'reports'
+    ArtifactName: 'metrics_reports'
+    publishLocation: 'Container'
+  displayName: 'Publish metrics reports as artifact'
